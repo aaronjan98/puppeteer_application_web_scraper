@@ -1,20 +1,28 @@
 const puppeteer = require('puppeteer')
+const axios = require('axios')
 
 ;(async () => {
-
     const browser = await puppeteer.launch({
         headless: false,
         slowMo: 500,
         args: ['--start-maximized'] 
     })
+    let webChromeEndpointUrl
 
-    const webChromeEndpointUrl = 'ws://localhost:9222/devtools/browser/a6fedaa0-5f94-4fdf-af55-fc1b35c677d5'
+    // connect to local browser instance
+    try {
+        const browser_websocket_up = await axios.get('http://127.0.0.1:9222/json/version').catch(error => console.error(error))
+        webChromeEndpointUrl = browser_websocket_up.data.webSocketDebuggerUrl
+
+    } catch(error) {
+        console.error('not listening to port 9222', error)
+    }
     const websocket_connection = await puppeteer.connect({
         browserWSEndpoint: webChromeEndpointUrl,
     })
-
     const page = await websocket_connection.newPage()
 
+    // scraping indeed for jobs
     try {
         await page.goto('https://www.indeed.com/', {waitUntil: 'load'})
         await page.setViewport({
@@ -22,11 +30,9 @@ const puppeteer = require('puppeteer')
             height: 1080 ,
             deviceScaleFactor: 1,
         })
-        const whatInputVal = "Software Engineer"
+        const whatInputVal = "Software Engineer Entry Level"
         const whereInputVal = "Remote"
         await page.type('#text-input-what', whatInputVal)
-        //await page.$eval('#text-input-where', el => el.value = 'Remote');
-        //await page.evaluate(() => document.getElementById("text-input-where").value = "")
         // Indeed saves this field with the last input so this clears it
         const input = await page.$('#text-input-where');
         await input.click({ clickCount: 2 })
