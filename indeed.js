@@ -1,32 +1,26 @@
 const puppeteer = require('puppeteer')
 const axios = require('axios')
 
-;(async () => {
-    const browser = await puppeteer.launch({
-        headless: false,
-        slowMo: 500,
-        args: ['--start-maximized'] 
-    })
+async function configureBrowsers() {
     let webChromeEndpointUrl
-
     // connect to local browser instance
-    try {
-        const browser_websocket_up = await axios.get('http://127.0.0.1:9222/json/version').catch(error => console.error(error))
-        webChromeEndpointUrl = browser_websocket_up.data.webSocketDebuggerUrl
-
-    } catch(error) {
-        console.error('not listening to port 9222', error)
-    }
+    const browser_websocket_up = await axios.get('http://127.0.0.1:9222/json/version').catch(error => console.error(error))
+    webChromeEndpointUrl = browser_websocket_up.data.webSocketDebuggerUrl
     const websocket_connection = await puppeteer.connect({
-        browserWSEndpoint: webChromeEndpointUrl,
+        browserWSEndpoint: webChromeEndpointUrl
     })
-    const page = await websocket_connection.newPage()
+
+    return websocket_connection.newPage()
+}
+
+;(async () => {
+    const page = await configureBrowsers()
 
     // scraping indeed for jobs
     try {
-        await page.goto('https://www.indeed.com/', {waitUntil: 'load'})
+        await page.goto('https://www.indeed.com/', { waitUntil: 'networkidle0' })
         await page.setViewport({
-            width: 1920,
+            width: 1800,
             height: 1080 ,
             deviceScaleFactor: 1,
         })
@@ -43,10 +37,24 @@ const axios = require('axios')
 
         if (button) {
             await button.click()
+            await page.waitForXPath('//*[@id="resultsBody"]')
         }
+
+        const options = await page.$$eval('.jobsearch-SerpJobCard', jobs => {
+            let jobs_to_apply = []
+
+            Array.from(jobs).map(job_info => {
+                let job = job_info.querySelector('h2 > a').innerHTML
+                console.log(job)
+                jobs_to_apply.push(job)
+            })
+            return jobs_to_apply
+        })
+
+        console.log({ options })
     } catch (error) {
         console.error(error)
     }
 
-    //await browser.close();
+    //await browser_websocket_up.close()
 })()
