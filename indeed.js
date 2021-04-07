@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer')
 const axios = require('axios')
 
-async function configureBrowsers() {
+async function configureBrowser() {
     let webChromeEndpointUrl
     // connect to local browser instance
     const browser_websocket_up = await axios.get('http://127.0.0.1:9222/json/version').catch(error => console.error(error))
@@ -14,7 +14,7 @@ async function configureBrowsers() {
 }
 
 ;(async () => {
-    const page = await configureBrowsers()
+    const page = await configureBrowser()
 
     // scraping indeed for jobs
     try {
@@ -43,9 +43,17 @@ async function configureBrowsers() {
         const options = await page.$$eval('.jobsearch-SerpJobCard', jobs => {
             let jobs_to_apply = []
 
-            Array.from(jobs).map(job_info => {
-                let job = job_info.querySelector('h2 > a').innerHTML
-                console.log(job)
+            Array.from(jobs).map(async (job_info) => {
+                let job = {
+                    'title': await job_info.querySelector('h2.title > a').innerText,
+                    'company': await job_info.querySelector('div.sjcl > div > span.company').innerText,
+                    'location': await job_info.querySelector('div.sjcl > div.location').textContent,
+                    'summary': await Array.from(job_info.querySelector('div.summary > ul')).map( li => {
+                        console.log({ li })
+                        return 'hi'
+                    }),
+                }
+                console.log(job_info.querySelector('div.summary > ul'))
                 jobs_to_apply.push(job)
             })
             return jobs_to_apply
