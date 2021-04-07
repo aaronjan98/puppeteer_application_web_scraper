@@ -1,3 +1,4 @@
+'use strict'
 const puppeteer = require('puppeteer')
 const axios = require('axios')
 
@@ -20,8 +21,8 @@ async function configureBrowser() {
     try {
         await page.goto('https://www.indeed.com/', { waitUntil: 'networkidle0' })
         await page.setViewport({
-            width: 1800,
-            height: 1080 ,
+            width: 1440,
+            height: 800 ,
             deviceScaleFactor: 1,
         })
         const whatInputVal = "Software Engineer Entry Level"
@@ -38,28 +39,34 @@ async function configureBrowser() {
         if (button) {
             await button.click()
             await page.waitForXPath('//*[@id="resultsBody"]')
+            //await page.waitForNavigation()
+            await page.waitForTimeout(2000)
+            await page.click('#pj_b16bfe080759710e h2') // Clicking the link will indirectly cause a navigation
+            await page.waitForTimeout(2000)
+            await page.reload()
+            //await page.waitForSelector('.jobsearch-ViewJobLayout .jobsearch-JobComponent-embeddedHeader .jobsearch-JobInfoHeader-title')
+            await page.waitForXPath('//*[@id="viewJobSSRRoot"]')
+            let job_header = await page.$x('//*[@id="viewJobSSRRoot"]/div/div[2]/div/div[1]/div[1]/h1').innerText
+            console.log(job_header)
+            // iwebvisit
         }
 
-        const options = await page.$$eval('.jobsearch-SerpJobCard', jobs => {
-            let jobs_to_apply = []
-
-            Array.from(jobs).map(async (job_info) => {
-                let job = {
-                    'title': await job_info.querySelector('h2.title > a').innerText,
-                    'company': await job_info.querySelector('div.sjcl > div > span.company').innerText,
-                    'location': await job_info.querySelector('div.sjcl > div.location').textContent,
-                    'summary': await Array.from(job_info.querySelector('div.summary > ul')).map( li => {
-                        console.log({ li })
-                        return 'hi'
-                    }),
-                }
-                console.log(job_info.querySelector('div.summary > ul'))
-                jobs_to_apply.push(job)
-            })
-            return jobs_to_apply
+        /*
+        const options = await page.$eval('.jobsearch-SerpJobCard', async job => {
+            // we want to click on this job
+            await job.click()
+            // this will take us to a new tab
+            // continue scraping in the new tab
+            // apply and close it to continue to the list of jobs
         })
 
-        console.log({ options })
+        const [response] = await Promise.all([
+            page.waitForNavigation(), // The promise resolves after navigation has finished
+            page.click('#pj_969ba00119193de1'), // Clicking the link will indirectly cause a navigation
+        ]);
+        */
+        
+        //console.log({ response })
     } catch (error) {
         console.error(error)
     }
