@@ -2,74 +2,52 @@
 const puppeteer = require('puppeteer')
 const axios = require('axios')
 const { exec } = require('child_process')
-const express = require('express')
-const app = express()
-const ws = require('ws')
-const wss = new ws.Server({ port: 9222, noServer: true })
+const timer = ms => new Promise( res => setTimeout(res, ms))
 
-wss.on('connection', socket => {
-  socket.on('message', message => console.log(message))
+async function execFxn() {
+    try {
+        await exec("osascript /Users/jan/Documents/dev/shellscript/run.scpt")
+    } catch (err) {
+        await err.status
+    }
 
-  socket.on('close', () => {
-      console.log('websocket closed')
-  })
-})
+    await timer(3000).then(_=>console.log("port 9222 will be up"))
 
-// `server` is a vanilla Node.js HTTP server, so use
-// the same ws upgrade process described here:
-// https://www.npmjs.com/package/ws#multiple-servers-sharing-a-single-https-server
-const server = app.listen(3000)
-server.on('upgrade', (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, socket => {
-    wss.emit('connection', socket, request)
-  })
-})
-// check if websocket is up on port 9222
-/*
-axios.get('127.0.0.1:9222/json/version').then(res => {
-    console.log({ res })
-}).catch(err => {
-    console.log({ err })
-})
-*/
-// if it's not, run the command: /Applications/Brave\ Browser.app/Contents/MacOS/Brave\ Browser --remote-debugging-port=9222&
+    // check if websocket is up on port 9222
+    await axios.get('http://127.0.0.1:9222/json').then(res => {
+        console.log('port 9222 is up')
+    }).catch(async err => {
+        await err.status
+    })
+}
 
-/*
 async function configureBrowser() {
     let webChromeEndpointUrl
+
     // connect to local browser instance
-    await axios.get('http://127.0.0.1:9222/json/version').then(res => {
+    const browser_websocket_up = await axios.get('http://127.0.0.1:9222/json/version').then(async res => {
         console.log({ res })
-        webChromeEndpointUrl = res.data.webSocketDebuggerUrl
+        webChromeEndpointUrl = await res.data.webSocketDebuggerUrl
     }).catch(error => {
-        console.error('error')
-        //console.error({ error })
-        exec('echo "Hello Bitch"')
-            //exec('/Applications/Brave\ Browser.app/Contents/MacOS/Brave\ Browser --remote-debugging-port=9222&')
-            //configureBrowser()
-        //errno: 'ECONNREFUSED'
+        console.error({ error })
     })
-    //const websocket_connection = await puppeteer.connect({
-        //browserWSEndpoint: webChromeEndpointUrl
-    //})
+    //console.log({ browser_websocket_up.data })
+    //webChromeEndpointUrl = await browser_websocket_up.data.webSocketDebuggerUrl
+    const websocket_connection = await puppeteer.connect({
+        browserWSEndpoint: webChromeEndpointUrl
+    })
 
-    //return websocket_connection.newPage()
+    return websocket_connection.newPage()
 }
-configureBrowser()
-*/
-/*
-async function execFxn() {
-        try {
-                await execSync("python3 ~/stand-up/bot.py", { cwd: "/home/lambdapeergroup/stand-up/" });
-        } catch (err) {
-                err.status;
-        }
-}
-execFxn();
-*/
 
-/*
 ;(async () => {
+    await axios.get("http://127.0.0.1:9222/json/version").then((response) => {
+        console.log(true)
+    }).catch(async error => {
+        console.log(false)
+        await execFxn()
+    })
+
     const page = await configureBrowser()
 
     // scraping indeed for jobs
@@ -126,4 +104,3 @@ execFxn();
 
     //await browser_websocket_up.close()
 })()
-*/
