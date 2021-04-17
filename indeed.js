@@ -24,7 +24,6 @@ async function open_websocket_debugger() {
 async function configureBrowser() {
     let webChromeEndpointUrl
 
-
     // connect to local browser instance
     const browser_websocket_up = await axios.get('http://127.0.0.1:9222/json/version').then(async res => {
         webChromeEndpointUrl = await res.data.webSocketDebuggerUrl
@@ -143,14 +142,14 @@ const preparePageForTests = async (page) => {
 
     // click on the job you want to apply for...
     await page.click('#pj_47e12f963a510960 h2')
-    await page.setDefaultNavigationTimeout(0) 
+    //await page.setDefaultNavigationTimeout(0) 
     await page.waitForNavigation({waitUntil: 'domcontentloaded'})
 
     await page.waitForSelector('iframe#vjs-container-iframe')
     const iframeElement = await page.$('iframe#vjs-container-iframe')
-
     await page.waitForTimeout(3000)
 
+    // iframe will pop up to the right with the JD and application...
     const job_header = await page.evaluate(async iframeElement => {
         const iframe = await document.querySelector('#vjs-container-iframe')
         const iframeDoc = await iframe.contentWindow.document || iframe.contentDocument
@@ -163,18 +162,35 @@ const preparePageForTests = async (page) => {
         }
 
         if (job_info.apply_thro_indeed) {
-            await iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').click()
+            await Promise.all([iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').click()])
         }
 
         return await job_info
     }, iframeElement)
     await console.log(job_header)
 
+    //await Promise.all([ page.click("button[type=submit]" ])
+    await page.waitForTimeout(3000)
     if (job_header.apply_thro_indeed) {
-        await page.waitForNavigation({waitUntil: 'domcontentloaded'})
-        await page.waitForSelector('body > iframe')
-        await page.$('body > iframe')
-        await page.waitForTimeout(3000)
+        await page.waitForSelector("div.indeed-apply-popup")
+        //await page.waitForNavigation({waitUntil: 'domcontentloaded'})
+        //await page.waitForNavigation({waitUntil: 'domcontentloaded'})
+        //await page.waitForXPath("//*[@id='indeedapply-modal-preload-1618642111867-iframe']")
+        //const [job_portal] = await page.$x("//*[@id='indeedapply-modal-preload-1618642111867-iframe']")
+        //const [job_portal] = await page.$x("//*[@id='ia-ApplyFormScreen']")
+        //const job_portal = await page.$("#ia-ApplyFormScreen")
+        //console.log({ job_portal })
+
+        const continue_application = await page.evaluate(async () => {
+            //const apply_form = await document.querySelector("iframe[title='Job application form']").src
+            const apply_form = await document.querySelector("div.indeed-apply-popup > div.indeed-apply-container > div.indeed-apply-bd  > iframe[title='Job application form container']")
+
+            console.log(apply_form)
+            // this only works when you inspect an element in the js console
+            // document.querySelector("iframe[title='Job application form']").contentWindow.document.querySelector('#form-action-continue') 
+            return apply_form
+        })
+        console.log(continue_application)
     }
     
     //await browser_websocket_up.close()
