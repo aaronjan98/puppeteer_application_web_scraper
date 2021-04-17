@@ -128,7 +128,7 @@ const preparePageForTests = async (page) => {
         await page.type('#text-input-what', whatInputVal)
         // Indeed saves this field with the last input so this clears it
         const input = await page.$('#text-input-where')
-        await input.click({ clickCount: 2 })
+        await input.click({ clickCount: 3 })
         await page.keyboard.press('Backspace')
         await page.type('#text-input-where', whereInputVal)
 
@@ -162,10 +162,14 @@ const preparePageForTests = async (page) => {
     const job_header = await page.evaluate(async iframeElement => {
         const iframe = await document.querySelector('#vjs-container-iframe')
         const iframeDoc = await iframe.contentWindow.document || iframe.contentDocument
-        const job_info = {
+        const job_info = await {
             apply_thro_indeed: await iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').innerText == 'Apply with Indeed',
-            job_title: await iframeDoc.body.querySelector('h1').innerText
+            job_title: await iframeDoc.body.querySelector('h1').innerText,
+            company: await iframeDoc.body.querySelector('#viewJobSSRRoot > div > div.jobsearch-JobComponent-embeddedHeader > div > div:nth-child(2) > div.jobsearch-CompanyInfoWithoutHeaderImage.jobsearch-CompanyInfoWithReview.jobsearch-CompanyInfoEji > div > div > div.jobsearch-InlineCompanyRating.icl-u-xs-mt--xs.icl-u-xs-mb--md > div.icl-u-lg-mr--sm.icl-u-xs-mr--xs > a').innerText,
+            job_location: await iframeDoc.body.querySelector('#viewJobSSRRoot > div > div.jobsearch-JobComponent-embeddedHeader > div > div:nth-child(2) > div.jobsearch-CompanyInfoWithoutHeaderImage.jobsearch-CompanyInfoWithReview.jobsearch-CompanyInfoEji > div > div > div:nth-child(2)').innerText,
+            job_description: await iframeDoc.body.querySelector('#jobDescriptionText').innerText
         }
+        console.log(await iframeDoc.body.querySelector('#jobDescriptionText').innerText)
         
         return await job_info
     }, iframeElement)
