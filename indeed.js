@@ -24,6 +24,7 @@ async function open_websocket_debugger() {
 async function configureBrowser() {
     let webChromeEndpointUrl
 
+
     // connect to local browser instance
     const browser_websocket_up = await axios.get('http://127.0.0.1:9222/json/version').then(async res => {
         webChromeEndpointUrl = await res.data.webSocketDebuggerUrl
@@ -31,7 +32,15 @@ async function configureBrowser() {
         console.error({ error })
     })
 
+    //await browser_websocket_up.overridePermissions('https://www.indeed.com/viewjob?cmp=Mindlance&t=Entry+Level+Software+Developer&jk=47e12f963a510960&sjdu=QwrRXKrqZ3CNX5W-O9jEvQn0-2baGJGucqnpr6BeYgMLoo8UMAM4gkbaVemqexMYBFlFAC2AuwY-ZldrZZe0EwY8e3Mj-OJW6JouNkPzftwlVZXFDbKxefd_bMiog1OLNDZv0iXfX1kgLDBUip1yGw&tk=1f3duvm4ot4hd800&adid=284416647&ad=-6NYlbfkN0AvdqiBn2-MRmfq7kMMGg5GVBaeFByIZ2LvtjU7LWay6yx80q0axhRnjxsCn-lUFn4igjgJ7sFFqqg5Kn9hw2DG8kmka886UwF535-9vlSiBMhK7uywM8nbqfg3rWC03PUlH46ov6R3VUDMKWMXXgo5q4LO35okMoq1M_3Ei1KdVKF2-WzEc9EtVvhK0C-GkXPXIItS0bFiO-1UGJq0fg_QcqML2C7o-UVH7NrhLPEc5-DSfSeI5PVAw3Vj8C8whnDL04Nq_Nu-LRd32S-xbvraAaFX19C1TMK2mnVuDx6KtjymyozWnbRPlEqymdxI0VrQijQAFiXfm2cVJuIP0OGk&pub=4a1b367933fd867b19b072952f68dceb&vjs=3')
+
     await puppeteer.defaultArgs({
+        args: [
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins',
+            '--disable-site-isolation-trials'
+        ],
+        devtools: true,
         headless: true
     })
     const websocket_connection = await puppeteer.connect({
@@ -102,6 +111,7 @@ const preparePageForTests = async (page) => {
     })
 
     const page = await configureBrowser()
+    page.setDefaultNavigationTimeout(0)
     await preparePageForTests(page)
 
     // scraping indeed for jobs
@@ -117,7 +127,7 @@ const preparePageForTests = async (page) => {
         const whereInputVal = "Remote"
         await page.type('#text-input-what', whatInputVal)
         // Indeed saves this field with the last input so this clears it
-        const input = await page.$('#text-input-where');
+        const input = await page.$('#text-input-where')
         await input.click({ clickCount: 2 })
         await page.keyboard.press('Backspace')
         await page.type('#text-input-where', whereInputVal)
@@ -127,45 +137,39 @@ const preparePageForTests = async (page) => {
         if (button) {
             await button.click()
             await page.waitForXPath('//*[@id="resultsBody"]')
-            await page.waitForTimeout(2000)
-            // click on the job you want to apply for...
-            await page.click('#pj_47e12f963a510960 h2')
-            await page.setDefaultNavigationTimeout(0) 
-            await page.waitForNavigation({waitUntil: 'domcontentloaded'})
-
-            await page.waitForSelector('iframe#vjs-container-iframe')
-            const iframeElement = await page.$('iframe#vjs-container-iframe')
-            const frame = await iframeElement.contentFrame()
-            //const frame = await iframeElement.contentWindow()
-            //console.log({ frame })
-            //console.log(util.inspect(frame).contentDocument)
             /*
              Running this in the DOM works:
              document.querySelector('iframe#vjs-container-iframe').contentDocument.querySelector('#viewJobSSRRoot > div > div.jobsearch-JobComponent-embeddedHeader > div > div:nth-child(2) > div.jobsearch-JobInfoHeader-title-container.jobsearch-JobInfoHeader-title-containerEji > h1').innerText
-            */
-            //const aHandle = await page.evaluateHandle(() => document.querySelector('iframe#vjs-container-iframe').contentDocument)
-            //const resultHandle = await page.evaluateHandle(body => body.querySelector('#viewJobSSRRoot').innerHTML, aHandle)
-            //console.log(await resultHandle.jsonValue());
-            //await resultHandle.dispose();
-            //const h1_title = await frame.$('#viewJobSSRRoot > div > div.jobsearch-JobComponent-embeddedHeader > div > div:nth-child(2) > div.jobsearch-JobInfoHeader-title-container.jobsearch-JobInfoHeader-title-containerEji > h1')
-            const h1_title = await frame.$('body')
-            console.log({ h1_title })
-            /*
-            const job_header = await page.evaluateHandle(async iframeElement => {
-                console.log('iframe doc: ', await iframeElement.contentDocument)
-                console.log('document.iframe: ', await document.querySelector('iframe#vjs-container-iframe').contentDocument)
-                console.log('src: ', await document.querySelector('iframe#vjs-container-iframe').contentDocument.src)
-
-                let foo = await document.querySelector('iframe#vjs-container-iframe').contentDocument.querySelector('#viewJobSSRRoot > div > div.jobsearch-JobComponent-embeddedHeader > div > div:nth-child(2) > div.jobsearch-JobInfoHeader-title-container.jobsearch-JobInfoHeader-title-containerEji > h1').innerText
-                console.log({ foo })
-                return foo
-            }, iframeElement)
-            console.log({ job_header })
             */
         }
 
     } catch (error) {
         console.error(error)
     }
+
+    // click on the job you want to apply for...
+    await page.click('#pj_47e12f963a510960 h2')
+    await page.setDefaultNavigationTimeout(0) 
+    await page.waitForNavigation({waitUntil: 'domcontentloaded'})
+
+    await page.waitForSelector('iframe#vjs-container-iframe')
+    const iframeElement = await page.$('iframe#vjs-container-iframe')
+    //const frame = await iframeElement.contentFrame()
+    //const bar = await frame.$('body')
+
+    await page.waitForTimeout(3000)
+
+    const job_header = await page.evaluate(async iframeElement => {
+        const iframe = await document.querySelector('#vjs-container-iframe')
+        const iframeDoc = await iframe.contentWindow.document || iframe.contentDocument
+        const job_info = {
+            apply_thro_indeed: await iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').innerText == 'Apply with Indeed',
+            job_title: await iframeDoc.body.querySelector('h1').innerText
+        }
+        
+        return await job_info
+    }, iframeElement)
+    await console.log(job_header)
+
     //await browser_websocket_up.close()
 })()
