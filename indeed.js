@@ -32,8 +32,6 @@ async function configureBrowser() {
         console.error({ error })
     })
 
-    //await browser_websocket_up.overridePermissions('https://www.indeed.com/viewjob?cmp=Mindlance&t=Entry+Level+Software+Developer&jk=47e12f963a510960&sjdu=QwrRXKrqZ3CNX5W-O9jEvQn0-2baGJGucqnpr6BeYgMLoo8UMAM4gkbaVemqexMYBFlFAC2AuwY-ZldrZZe0EwY8e3Mj-OJW6JouNkPzftwlVZXFDbKxefd_bMiog1OLNDZv0iXfX1kgLDBUip1yGw&tk=1f3duvm4ot4hd800&adid=284416647&ad=-6NYlbfkN0AvdqiBn2-MRmfq7kMMGg5GVBaeFByIZ2LvtjU7LWay6yx80q0axhRnjxsCn-lUFn4igjgJ7sFFqqg5Kn9hw2DG8kmka886UwF535-9vlSiBMhK7uywM8nbqfg3rWC03PUlH46ov6R3VUDMKWMXXgo5q4LO35okMoq1M_3Ei1KdVKF2-WzEc9EtVvhK0C-GkXPXIItS0bFiO-1UGJq0fg_QcqML2C7o-UVH7NrhLPEc5-DSfSeI5PVAw3Vj8C8whnDL04Nq_Nu-LRd32S-xbvraAaFX19C1TMK2mnVuDx6KtjymyozWnbRPlEqymdxI0VrQijQAFiXfm2cVJuIP0OGk&pub=4a1b367933fd867b19b072952f68dceb&vjs=3')
-
     await puppeteer.defaultArgs({
         args: [
             '--disable-web-security',
@@ -137,10 +135,6 @@ const preparePageForTests = async (page) => {
         if (button) {
             await button.click()
             await page.waitForXPath('//*[@id="resultsBody"]')
-            /*
-             Running this in the DOM works:
-             document.querySelector('iframe#vjs-container-iframe').contentDocument.querySelector('#viewJobSSRRoot > div > div.jobsearch-JobComponent-embeddedHeader > div > div:nth-child(2) > div.jobsearch-JobInfoHeader-title-container.jobsearch-JobInfoHeader-title-containerEji > h1').innerText
-            */
         }
 
     } catch (error) {
@@ -154,8 +148,6 @@ const preparePageForTests = async (page) => {
 
     await page.waitForSelector('iframe#vjs-container-iframe')
     const iframeElement = await page.$('iframe#vjs-container-iframe')
-    //const frame = await iframeElement.contentFrame()
-    //const bar = await frame.$('body')
 
     await page.waitForTimeout(3000)
 
@@ -169,11 +161,21 @@ const preparePageForTests = async (page) => {
             job_location: await iframeDoc.body.querySelector('#viewJobSSRRoot > div > div.jobsearch-JobComponent-embeddedHeader > div > div:nth-child(2) > div.jobsearch-CompanyInfoWithoutHeaderImage.jobsearch-CompanyInfoWithReview.jobsearch-CompanyInfoEji > div > div > div:nth-child(2)').innerText,
             job_description: await iframeDoc.body.querySelector('#jobDescriptionText').innerText
         }
-        console.log(await iframeDoc.body.querySelector('#jobDescriptionText').innerText)
-        
+
+        if (job_info.apply_thro_indeed) {
+            await iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').click()
+        }
+
         return await job_info
     }, iframeElement)
     await console.log(job_header)
 
+    if (job_header.apply_thro_indeed) {
+        await page.waitForNavigation({waitUntil: 'domcontentloaded'})
+        await page.waitForSelector('body > iframe')
+        await page.$('body > iframe')
+        await page.waitForTimeout(3000)
+    }
+    
     //await browser_websocket_up.close()
 })()
