@@ -135,6 +135,7 @@ const preparePageForTests = async (page) => {
         if (button) {
             await button.click()
             await page.waitForXPath('//*[@id="resultsBody"]')
+            await page.waitForTimeout(3000)
         }
 
     } catch (error) {
@@ -173,8 +174,41 @@ const preparePageForTests = async (page) => {
     if (job_header.apply_thro_indeed) {
         await page.waitForSelector("div.indeed-apply-popup")
         // select nested iFrame apply.indeed.com
-        const frame = await page.frames().find(frame => frame.name().includes('indeedapply-modal-preload'))
-        await frame.$eval('body > iframe', element => element.contentDocument.querySelector('#form-action-continue').click())
+        const container_frame = await page.frames().find(frame => frame.name().includes('indeedapply-modal-preload'))
+        const apply_frame = await container_frame.childFrames()[0]
+        try {
+            const [response] = await Promise.all([
+              apply_frame.waitForNavigation({ timeout: 30000 }),
+              apply_frame.click('#form-action-continue'),
+            ])
+        } catch (e) {
+            console.log('Error with #form-action-continue', e)
+        }
+        try {
+            const [response] = await Promise.all([
+                apply_frame.waitForNavigation(),
+                apply_frame.click('#form-action-submit'),
+            ])
+        } catch (e) {
+            console.log('Error with #form-action-submit', e)
+        }
+
+        try {
+            const [response] = await Promise.all([
+                apply_frame.waitForNavigation(),
+                apply_frame.click('#ia-container > div > div.ia-ConfirmationScreen-closeLink'),
+            ])
+            console.log('successfully applied')
+        } catch (e) {
+            console.log('Error with #ia-container > div > div.ia-ConfirmationScreen-closeLink', e)
+        }
+        // close suggested opportunity
+        try {
+            await page.waitForSelector('#popover-foreground > #popover-x')
+            await page.click('#popover-foreground > #popover-x')
+        } catch (e) {
+            console.log('Error with closing suggested opp', e)
+        }
     }
     
     //await browser_websocket_up.close()
