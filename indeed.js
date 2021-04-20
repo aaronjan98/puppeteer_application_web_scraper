@@ -176,7 +176,14 @@ const preparePageForTests = async (page) => {
         // select nested iFrame apply.indeed.com
         const container_frame = await page.frames().find(frame => frame.name().includes('indeedapply-modal-preload'))
         const apply_frame = await container_frame.childFrames()[0]
-        try {
+        try { // check if the job has been applied to already
+            if (await apply_frame.$eval('#ia_success', el => el.innerText.contains('You have applied'))) {
+                apply_frame.click('#close-popup')
+            }
+        } catch {
+            // pass
+        }
+        try { // click continue
             const [response] = await Promise.all([
               apply_frame.waitForNavigation({ timeout: 30000 }),
               apply_frame.click('#form-action-continue'),
@@ -184,7 +191,7 @@ const preparePageForTests = async (page) => {
         } catch (e) {
             console.log('Error with #form-action-continue', e)
         }
-        try {
+        try { // click applied
             const [response] = await Promise.all([
                 apply_frame.waitForNavigation(),
                 apply_frame.click('#form-action-submit'),
@@ -192,8 +199,7 @@ const preparePageForTests = async (page) => {
         } catch (e) {
             console.log('Error with #form-action-submit', e)
         }
-
-        try {
+        try { // continue or close
             const [response] = await Promise.all([
                 apply_frame.waitForNavigation(),
                 apply_frame.click('#ia-container > div > div.ia-ConfirmationScreen-closeLink'),
@@ -202,8 +208,7 @@ const preparePageForTests = async (page) => {
         } catch (e) {
             console.log('Error with #ia-container > div > div.ia-ConfirmationScreen-closeLink', e)
         }
-        // close suggested opportunity
-        try {
+        try { // close suggested opportunity
             await page.waitForSelector('#popover-foreground > #popover-x')
             await page.click('#popover-foreground > #popover-x')
         } catch (e) {
