@@ -6,13 +6,14 @@ const { exec } = require('child_process')
 const timer = ms => new Promise( res => setTimeout(res, ms))
 
 async function open_websocket_debugger() {
+    // need to launch Chrome with the "--remote-debugging-port=9222 argument to connect to an existing browser session
     try {
         await exec("osascript /Users/jan/Documents/dev/shellscript/run.scpt")
     } catch (err) {
         await err.status
     }
 
-    await timer(3000).then(async _ => {
+    await timer(5000).then(async _ => {
         await axios.get('http://127.0.0.1:9222/json').then(res => {
             console.log('port 9222 is up')
         }).catch(async err => {
@@ -34,7 +35,7 @@ async function configureBrowser() {
     await puppeteer.defaultArgs({
         args: [
             '--disable-web-security',
-            '--disable-features=IsolateOrigins',
+            '--disable-features=IsolateOrigins,site-per-process',
             '--disable-site-isolation-trials'
         ],
         devtools: true,
@@ -142,7 +143,6 @@ const preparePageForTests = async (page) => {
 
     // click on the job you want to apply for...
     await page.click('#pj_47e12f963a510960 h2')
-    //await page.setDefaultNavigationTimeout(0) 
     await page.waitForNavigation({waitUntil: 'domcontentloaded'})
 
     await page.waitForSelector('iframe#vjs-container-iframe')
@@ -169,28 +169,12 @@ const preparePageForTests = async (page) => {
     }, iframeElement)
     await console.log(job_header)
 
-    //await Promise.all([ page.click("button[type=submit]" ])
     await page.waitForTimeout(3000)
     if (job_header.apply_thro_indeed) {
         await page.waitForSelector("div.indeed-apply-popup")
-        //await page.waitForNavigation({waitUntil: 'domcontentloaded'})
-        //await page.waitForNavigation({waitUntil: 'domcontentloaded'})
-        //await page.waitForXPath("//*[@id='indeedapply-modal-preload-1618642111867-iframe']")
-        //const [job_portal] = await page.$x("//*[@id='indeedapply-modal-preload-1618642111867-iframe']")
-        //const [job_portal] = await page.$x("//*[@id='ia-ApplyFormScreen']")
-        //const job_portal = await page.$("#ia-ApplyFormScreen")
-        //console.log({ job_portal })
-
-        const continue_application = await page.evaluate(async () => {
-            //const apply_form = await document.querySelector("iframe[title='Job application form']").src
-            const apply_form = await document.querySelector("div.indeed-apply-popup > div.indeed-apply-container > div.indeed-apply-bd  > iframe[title='Job application form container']")
-
-            console.log(apply_form)
-            // this only works when you inspect an element in the js console
-            // document.querySelector("iframe[title='Job application form']").contentWindow.document.querySelector('#form-action-continue') 
-            return apply_form
-        })
-        console.log(continue_application)
+        // select nested iFrame apply.indeed.com
+        const frame = await page.frames().find(frame => frame.name().includes('indeedapply-modal-preload'))
+        await frame.$eval('body > iframe', element => element.contentDocument.querySelector('#form-action-continue').click())
     }
     
     //await browser_websocket_up.close()
