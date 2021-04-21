@@ -43,7 +43,7 @@ async function configureBrowser() {
     })
     const websocket_connection = await puppeteer.connect({
         browserWSEndpoint: webChromeEndpointUrl,
-        slowMo: 10
+        slowMo: 50
     })
 
     return websocket_connection.newPage()
@@ -100,6 +100,15 @@ const preparePageForTests = async (page) => {
   })
 }
 
+async function close_suggested_opportunity() {
+    try { // close suggested opportunity
+        await page.waitForSelector('#popover-foreground > #popover-x')
+        await page.click('#popover-foreground > #popover-x')
+    } catch (e) {
+        console.log('Error with closing suggested opp', e)
+    }
+}
+
 ;(async () => {
     await axios.get("http://127.0.0.1:9222/json/version").then(response => {
         console.log('port 9222 is already running')
@@ -120,8 +129,7 @@ const preparePageForTests = async (page) => {
             height: 800 ,
             deviceScaleFactor: 1,
         })
-        //const whatInputVal = "Software Engineer Entry Level"
-        const whatInputVal = "Entry Level Software Developer - Train to Hire Opportunity"
+        const whatInputVal = "Software Engineer Entry Level"
         const whereInputVal = "Remote"
         await page.type('#text-input-what', whatInputVal)
         // Indeed saves this field with the last input so this clears it
@@ -137,84 +145,92 @@ const preparePageForTests = async (page) => {
             await page.waitForXPath('//*[@id="resultsBody"]')
             await page.waitForTimeout(3000)
         }
-
     } catch (error) {
         console.error(error)
     }
+    // searching through each job from search query
+    let jobs_on_page = await page.$$('.jobsearch-SerpJobCard')
+    for(let i = 0; i < jobs_on_page.length; i++) {
+        jobs_on_page[i].$eval('h2.title', async job => {
+            await job.click()
+        })
+        await page.waitForNavigation({waitUntil: 'domcontentloaded'})
+        await page.waitForSelector('iframe#vjs-container-iframe')
+        const iframeElement = await page.$('iframe#vjs-container-iframe')
+        await page.waitForTimeout(3000)
 
-    // click on the job you want to apply for...
-    await page.click('#pj_47e12f963a510960 h2')
-    await page.waitForNavigation({waitUntil: 'domcontentloaded'})
-
-    await page.waitForSelector('iframe#vjs-container-iframe')
-    const iframeElement = await page.$('iframe#vjs-container-iframe')
-    await page.waitForTimeout(3000)
-
-    // iframe will pop up to the right with the JD and application...
-    const job_header = await page.evaluate(async iframeElement => {
-        const iframe = await document.querySelector('#vjs-container-iframe')
-        const iframeDoc = await iframe.contentWindow.document || iframe.contentDocument
-        const job_info = await {
-            apply_thro_indeed: await iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').innerText == 'Apply with Indeed',
-            job_title: await iframeDoc.body.querySelector('h1').innerText,
-            company: await iframeDoc.body.querySelector('#viewJobSSRRoot > div > div.jobsearch-JobComponent-embeddedHeader > div > div:nth-child(2) > div.jobsearch-CompanyInfoWithoutHeaderImage.jobsearch-CompanyInfoWithReview.jobsearch-CompanyInfoEji > div > div > div.jobsearch-InlineCompanyRating.icl-u-xs-mt--xs.icl-u-xs-mb--md > div.icl-u-lg-mr--sm.icl-u-xs-mr--xs > a').innerText,
-            job_location: await iframeDoc.body.querySelector('#viewJobSSRRoot > div > div.jobsearch-JobComponent-embeddedHeader > div > div:nth-child(2) > div.jobsearch-CompanyInfoWithoutHeaderImage.jobsearch-CompanyInfoWithReview.jobsearch-CompanyInfoEji > div > div > div:nth-child(2)').innerText,
-            job_description: await iframeDoc.body.querySelector('#jobDescriptionText').innerText
-        }
-
-        if (job_info.apply_thro_indeed) {
-            await Promise.all([iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').click()])
-        }
-
-        return await job_info
-    }, iframeElement)
-    await console.log(job_header)
-
-    await page.waitForTimeout(3000)
-    if (job_header.apply_thro_indeed) {
-        await page.waitForSelector("div.indeed-apply-popup")
-        // select nested iFrame apply.indeed.com
-        const container_frame = await page.frames().find(frame => frame.name().includes('indeedapply-modal-preload'))
-        const apply_frame = await container_frame.childFrames()[0]
-        try { // check if the job has been applied to already
-            if (await apply_frame.$eval('#ia_success', el => el.innerText.contains('You have applied'))) {
-                apply_frame.click('#close-popup')
+        // iframe will pop up to the right with the JD and application...
+        const job_header = await page.evaluate(async iframeElement => {
+            const iframeDoc = await iframeElement.contentWindow.document || iframeElement.contentDocument
+            let apply_indeed = false
+            try {
+                await iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').innerText
+                apply_indeed = true
+            } catch {
+                apply_indeed = false
             }
-        } catch {
-            // pass
+            const job_info = await {
+                apply_thro_indeed: apply_indeed,
+                application_link: 'https://www.indeed.com' + iframeElement.src,
+                job_title: await iframeDoc.body.querySelector('h1').innerText,
+                company: await iframeDoc.body.querySelector('.jobsearch-InlineCompanyRating div').innerText,
+                job_location: await iframeDoc.body.querySelector('.jobsearch-JobInfoHeader-subtitle').lastChild.innerText,
+                job_description: await iframeDoc.body.querySelector('#jobDescriptionText').innerText
+            }
+            console.log({ job_info })
+
+            if (job_info.apply_thro_indeed) { // check if you can apply through Indeed
+                await Promise.all([iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').click()])
+            }
+
+            return await job_info
+        }, iframeElement)
+        await console.log(job_header)
+
+        await page.waitForTimeout(3000)
+        if (job_header.apply_thro_indeed) {
+            await page.waitForSelector("div.indeed-apply-popup")
+            // select nested iFrame apply.indeed.com
+            const container_frame = await page.frames().find(frame => frame.name().includes('indeedapply-modal-preload'))
+            const apply_frame = await container_frame.childFrames()[0]
+            try { // check if the job has been applied to already
+                if (await apply_frame.$eval('#ia_success', el => el.innerText.contains('You have applied'))) {
+                    apply_frame.click('#close-popup')
+                    close_suggested_opportunity()
+                }
+            } catch {
+                // pass
+            }
+            try { // click continue
+                const [response] = await Promise.all([
+                  apply_frame.waitForNavigation({ timeout: 30000 }),
+                  apply_frame.click('#form-action-continue'),
+                ])
+            } catch (e) {
+                console.log('Error with #form-action-continue', e)
+            }
+            try { // click applied
+                const [response] = await Promise.all([
+                    apply_frame.waitForNavigation(),
+                    apply_frame.click('#form-action-submit'),
+                ])
+            } catch (e) {
+                console.log('Error with #form-action-submit', e)
+            }
+            try { // continue or close
+                const [response] = await Promise.all([
+                    apply_frame.waitForNavigation(),
+                    apply_frame.click('#ia-container > div > div.ia-ConfirmationScreen-closeLink'),
+                ])
+                console.log('successfully applied')
+            } catch (e) {
+                console.log('Error with #ia-container > div > div.ia-ConfirmationScreen-closeLink', e)
+            }
+            close_suggested_opportunity()
+        } else {
+            console.log('apply on company website')
         }
-        try { // click continue
-            const [response] = await Promise.all([
-              apply_frame.waitForNavigation({ timeout: 30000 }),
-              apply_frame.click('#form-action-continue'),
-            ])
-        } catch (e) {
-            console.log('Error with #form-action-continue', e)
-        }
-        try { // click applied
-            const [response] = await Promise.all([
-                apply_frame.waitForNavigation(),
-                apply_frame.click('#form-action-submit'),
-            ])
-        } catch (e) {
-            console.log('Error with #form-action-submit', e)
-        }
-        try { // continue or close
-            const [response] = await Promise.all([
-                apply_frame.waitForNavigation(),
-                apply_frame.click('#ia-container > div > div.ia-ConfirmationScreen-closeLink'),
-            ])
-            console.log('successfully applied')
-        } catch (e) {
-            console.log('Error with #ia-container > div > div.ia-ConfirmationScreen-closeLink', e)
-        }
-        try { // close suggested opportunity
-            await page.waitForSelector('#popover-foreground > #popover-x')
-            await page.click('#popover-foreground > #popover-x')
-        } catch (e) {
-            console.log('Error with closing suggested opp', e)
-        }
+        await page.waitForTimeout(5000)
     }
-    
     //await browser_websocket_up.close()
 })()
