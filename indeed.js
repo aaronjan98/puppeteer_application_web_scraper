@@ -109,6 +109,20 @@ async function close_suggested_opportunity() {
     }
 }
 
+async function check_employer_questions(iframeElement) {
+    try {
+        await iframeElement.$eval('.ia-ScreenerQuestions', el => {
+            el.querySelectorAll('.is-required').forEach(item => {
+                // get question:
+                // item.firstChild.querySelector('span').innerText
+                item.lastChild.querySelector('input').value = "1"
+            })
+        })
+    } catch {
+        // pass
+    }
+}
+
 ;(async () => {
     await axios.get("http://127.0.0.1:9222/json/version").then(response => {
         console.log('port 9222 is already running')
@@ -186,14 +200,15 @@ async function close_suggested_opportunity() {
             return await job_info
         }, iframeElement)
         await console.log(job_header)
+        // save this data in an excel sheet
 
         await page.waitForTimeout(3000)
-        if (job_header.apply_thro_indeed) {
+        if (job_header.apply_thro_indeed) { // if I'm able to apply through Indeed
             await page.waitForSelector("div.indeed-apply-popup")
             // select nested iFrame apply.indeed.com
             const container_frame = await page.frames().find(frame => frame.name().includes('indeedapply-modal-preload'))
             const apply_frame = await container_frame.childFrames()[0]
-            try { // check if the job has been applied to already
+            try { // check if the job has been applied to already through Indeed
                 if (await apply_frame.$eval('#ia_success', el => el.innerText.contains('You have applied'))) {
                     apply_frame.click('#close-popup')
                     close_suggested_opportunity()
@@ -209,6 +224,8 @@ async function close_suggested_opportunity() {
             } catch (e) {
                 console.log('Error with #form-action-continue', e)
             }
+            // check for employer written questions
+            //check_employer_questions(iframeElement)
             try { // click applied
                 const [response] = await Promise.all([
                     apply_frame.waitForNavigation(),
@@ -229,6 +246,9 @@ async function close_suggested_opportunity() {
             close_suggested_opportunity()
         } else {
             console.log('apply on company website')
+            // temporarily, add to a file to manually apply to later
+            // check if the job has been applied through the website by cross-referencing the excel sheet
+            // apply through the website eventually
         }
         await page.waitForTimeout(5000)
     }
