@@ -165,6 +165,8 @@ async function check_employer_questions(iframeElement) {
     // searching through each job from search query
     let jobs_on_page = await page.$$('.jobsearch-SerpJobCard')
     for(let i = 0; i < jobs_on_page.length; i++) {
+        // re-executing selectors, can I save selector handles in an array to reuse?
+        jobs_on_page = await page.$$('.jobsearch-SerpJobCard')
         jobs_on_page[i].$eval('h2.title', async job => {
             await job.click()
         }).catch(e => console.log('failing here'))
@@ -194,22 +196,6 @@ async function check_employer_questions(iframeElement) {
             }
             // add to a file
             //console.log({ job_info })
-
-            /*
-            if (job_info.apply_thro_indeed) { // check if you can apply through Indeed
-                await iframeDoc.body.querySelector('#indeedApplyButton > div > span').click()
-                //page.on('framenavigated', frame => {
-                    //console.log({ frame })
-                //})
-
-                //const [framenavigated] = await Promise.all([
-                  ////new Promise(resolve => page.once('framenavigated', resolve)),
-                  //page.waitForNavigation(),
-                  //page.click('#ia-container > div > div.css-5f7tbx.eu4oa1w0 > div > main > div.css-j9bld6.e37uo190 > div.css-15878po.eu4oa1w0 > div > div > div.ia-BasePage-footer > div > button > span'),
-                //]);
-            }
-            */
-
             return await job_info
         }, iframeElement)
         await console.log(job_header)
@@ -219,48 +205,31 @@ async function check_employer_questions(iframeElement) {
         await page.waitForTimeout(3000)
         if (job_header.apply_thro_indeed) { // if I'm able to apply through Indeed
             console.log('able to apply through Indeed')
-
             // Set up the wait for navigation before clicking the link.
             const navigationPromise = page.waitForNavigation();
             //await page.on('framedetached', () => { console.log('frame detached') })
             await iframeElement.evaluate(async frame => await frame.contentDocument.querySelector('#indeedApplyButton').click())
             await page.waitForTimeout(3000)
+            // The navigationPromise resolves after navigation has finished
             await navigationPromise;
 
             await page.waitForSelector('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton')
-            // The navigationPromise resolves after navigation has finished
-
-            await console.log('after: ', await page.mainFrame().url())
-            //await Promise.all([
-              //page.click('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton'),
-              //page.waitForNavigation({ waitUntil: 'networkidle0' }),
-            //]);
-
 
             // Clicking the link will indirectly cause a navigation
             await page.click('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton')
             await page.waitForTimeout(3000)
-
             await navigationPromise;
 
             await page.waitForXPath('//*[@id="ia-modal-root"]/div/div/div[1]/div/div/div[2]/button[1]/span[contains(., "Exit")]')
             await page.click('button.ia-ExitLinkWithModal-modal-exit')
             await navigationPromise;
-            //await page.click('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton').then(() => page.waitForNavigation());
-            //await Promise.all([
-                ////page.click('#ia-container > div > div.css-5f7tbx.eu4oa1w0 > div > main > div.css-j9bld6.e37uo190 > div.css-15878po.eu4oa1w0 > div > div > div.ia-BasePage-footer > div > div > div > button'),
-                //page.evaluate(async _ => {
-                    //let foo = await document.querySelector('#ia-container > div > div.css-5f7tbx.eu4oa1w0 > div > main > div.css-j9bld6.e37uo190 > div.css-15878po.eu4oa1w0 > div > div > div.ia-BasePage-footer > div > div > div > button')
-                    //console.log(foo)
-                //}),
-            //])
-            // testing if the execution context will return
         } else {
             console.log('apply on company website')
             // temporarily, add to a file to manually apply to later
             // check if the job has been applied through the website by cross-referencing the excel sheet
             // apply through the website eventually
         }
+        await page.waitForTimeout(3000)
     } // end of jobs_on_page loop
     //await browser_websocket_up.close()
 })()
