@@ -43,7 +43,7 @@ async function configureBrowser() {
     })
     const websocket_connection = await puppeteer.connect({
         browserWSEndpoint: webChromeEndpointUrl,
-        slowMo: 50
+        slowMo: 10
     })
 
     return websocket_connection.newPage()
@@ -167,7 +167,8 @@ async function check_employer_questions(iframeElement) {
     for(let i = 0; i < jobs_on_page.length; i++) {
         jobs_on_page[i].$eval('h2.title', async job => {
             await job.click()
-        })
+        }).catch(e => console.log('failing here'))
+
         await page.waitForNavigation({waitUntil: 'domcontentloaded'})
         await page.waitForSelector('iframe#vjs-container-iframe')
         const iframeElement = await page.$('iframe#vjs-container-iframe')
@@ -178,7 +179,7 @@ async function check_employer_questions(iframeElement) {
             const iframeDoc = await iframeElement.contentWindow.document || iframeElement.contentDocument
             let apply_indeed = false
             try {
-                await iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').innerText
+                await iframeDoc.body.querySelector('#indeedApplyButton > div > span').innerText
                 apply_indeed = true
             } catch {
                 apply_indeed = false
@@ -191,66 +192,75 @@ async function check_employer_questions(iframeElement) {
                 job_location: await iframeDoc.body.querySelector('.jobsearch-JobInfoHeader-subtitle').lastChild.innerText,
                 job_description: await iframeDoc.body.querySelector('#jobDescriptionText').innerText
             }
-            console.log({ job_info })
+            // add to a file
+            //console.log({ job_info })
 
+            /*
             if (job_info.apply_thro_indeed) { // check if you can apply through Indeed
-                await Promise.all([iframeDoc.body.querySelector('#indeedApplyWidget > div.icl-u-lg-hide.is-embedded > button > span.jobsearch-HighlightIndeedApplyButton-text').click()])
+                await iframeDoc.body.querySelector('#indeedApplyButton > div > span').click()
+                //page.on('framenavigated', frame => {
+                    //console.log({ frame })
+                //})
+
+                //const [framenavigated] = await Promise.all([
+                  ////new Promise(resolve => page.once('framenavigated', resolve)),
+                  //page.waitForNavigation(),
+                  //page.click('#ia-container > div > div.css-5f7tbx.eu4oa1w0 > div > main > div.css-j9bld6.e37uo190 > div.css-15878po.eu4oa1w0 > div > div > div.ia-BasePage-footer > div > button > span'),
+                //]);
             }
+            */
 
             return await job_info
         }, iframeElement)
         await console.log(job_header)
+        // page frame is navigated to a different url
         // save this data in an excel sheet
 
         await page.waitForTimeout(3000)
         if (job_header.apply_thro_indeed) { // if I'm able to apply through Indeed
-            await page.waitForSelector("div.indeed-apply-popup")
-            // select nested iFrame apply.indeed.com
-            const container_frame = await page.frames().find(frame => frame.name().includes('indeedapply-modal-preload'))
-            const apply_frame = await container_frame.childFrames()[0]
-            try { // check if the job has been applied to already through Indeed
-                if (await apply_frame.$eval('#ia_success', el => el.innerText.contains('You have applied'))) {
-                    apply_frame.click('#close-popup')
-                    close_suggested_opportunity()
-                }
-            } catch {
-                // pass
-            }
-            try { // click continue
-                const [response] = await Promise.all([
-                  apply_frame.waitForNavigation({ timeout: 30000 }),
-                  apply_frame.click('#form-action-continue'),
-                ])
-            } catch (e) {
-                console.log('Error with #form-action-continue', e)
-            }
-            // check for employer written questions
-            //check_employer_questions(iframeElement)
-            try { // click applied
-                const [response] = await Promise.all([
-                    apply_frame.waitForNavigation(),
-                    apply_frame.click('#form-action-submit'),
-                ])
-            } catch (e) {
-                console.log('Error with #form-action-submit', e)
-            }
-            try { // continue or close
-                const [response] = await Promise.all([
-                    apply_frame.waitForNavigation(),
-                    apply_frame.click('#ia-container > div > div.ia-ConfirmationScreen-closeLink'),
-                ])
-                console.log('successfully applied')
-            } catch (e) {
-                console.log('Error with #ia-container > div > div.ia-ConfirmationScreen-closeLink', e)
-            }
-            close_suggested_opportunity()
+            console.log('able to apply through Indeed')
+
+            // Set up the wait for navigation before clicking the link.
+            const navigationPromise = page.waitForNavigation();
+            //await page.on('framedetached', () => { console.log('frame detached') })
+            await iframeElement.evaluate(async frame => await frame.contentDocument.querySelector('#indeedApplyButton').click())
+            await page.waitForTimeout(3000)
+            await navigationPromise;
+
+            await page.waitForSelector('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton')
+            // The navigationPromise resolves after navigation has finished
+
+            await console.log('after: ', await page.mainFrame().url())
+            //await Promise.all([
+              //page.click('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton'),
+              //page.waitForNavigation({ waitUntil: 'networkidle0' }),
+            //]);
+
+
+            // Clicking the link will indirectly cause a navigation
+            await page.click('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton')
+            await page.waitForTimeout(3000)
+
+            await navigationPromise;
+
+            await page.waitForXPath('//*[@id="ia-modal-root"]/div/div/div[1]/div/div/div[2]/button[1]/span[contains(., "Exit")]')
+            await page.click('button.ia-ExitLinkWithModal-modal-exit')
+            await navigationPromise;
+            //await page.click('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton').then(() => page.waitForNavigation());
+            //await Promise.all([
+                ////page.click('#ia-container > div > div.css-5f7tbx.eu4oa1w0 > div > main > div.css-j9bld6.e37uo190 > div.css-15878po.eu4oa1w0 > div > div > div.ia-BasePage-footer > div > div > div > button'),
+                //page.evaluate(async _ => {
+                    //let foo = await document.querySelector('#ia-container > div > div.css-5f7tbx.eu4oa1w0 > div > main > div.css-j9bld6.e37uo190 > div.css-15878po.eu4oa1w0 > div > div > div.ia-BasePage-footer > div > div > div > button')
+                    //console.log(foo)
+                //}),
+            //])
+            // testing if the execution context will return
         } else {
             console.log('apply on company website')
             // temporarily, add to a file to manually apply to later
             // check if the job has been applied through the website by cross-referencing the excel sheet
             // apply through the website eventually
         }
-        await page.waitForTimeout(5000)
-    }
+    } // end of jobs_on_page loop
     //await browser_websocket_up.close()
 })()
