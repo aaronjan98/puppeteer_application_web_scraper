@@ -220,6 +220,7 @@ async function check_employer_questions(iframeElement) {
             await page.waitForTimeout(3000)
             await navigationPromise;
 
+            // instead of exiting...
             await page.waitForXPath('//*[@id="ia-modal-root"]/div/div/div[1]/div/div/div[2]/button[1]/span[contains(., "Exit")]')
             await page.click('button.ia-ExitLinkWithModal-modal-exit')
             await navigationPromise;
