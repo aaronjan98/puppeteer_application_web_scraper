@@ -1,6 +1,7 @@
 # Questions from the Employer
 // Besides the optional questions, these are multiple choice
 // text below a question that aren't followed by the double backslash will be considered as answers
+// side thought:  I could have a json file with all these questions so that the order look up is non linear, but I'm guessing some of the questions won't match verbatim and I like how this is more readable
 
 1. What percentage of the time are you willing to travel for work?
 // options are 0%, 25%, 50%, 75%, 100%
@@ -29,3 +30,7 @@ Able to reliably commute or willing to relocate with employer-provided relocatio
 
 1. Are you able to provide college transcripts, and SAT or ACT scores?
 // optional employer question
+
+1. Please list 2-3 dates and time ranges that you could do an interview.
+// optional employer question
+
