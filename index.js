@@ -206,24 +206,44 @@ async function check_employer_questions(iframeElement) {
         if (job_header.apply_thro_indeed) { // if I'm able to apply through Indeed
             console.log('able to apply through Indeed')
             // Set up the wait for navigation before clicking the link.
-            const navigationPromise = page.waitForNavigation();
+            const navigationPromise = page.waitForNavigation()
             //await page.on('framedetached', () => { console.log('frame detached') })
             await iframeElement.evaluate(async frame => await frame.contentDocument.querySelector('#indeedApplyButton').click())
             await page.waitForTimeout(3000)
             // The navigationPromise resolves after navigation has finished
-            await navigationPromise;
+            await navigationPromise
 
-            await page.waitForSelector('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton')
+            await page.waitForXPath('//*[@id="ia-container"]/div/div[1]/div/main/div[2]/div[2]/div/div/div[2]/div/button/span[contains(., "Continue")]')
+            // check which step the application is on
+            let step = await page.$eval('div.ia-Navigation-steps', step => step.innerText.match(/step\s+(.)\s+of/)[1])
+            console.log({ step })
+            if (step == '1') {
+                // check which heading
+                // check to see if title has the class of ia-BasePage-heading
+                await page.$eval('div.ia-BasePage', apply_portal_container => {
+                    const base_page_children = apply_portal_container.children
+                    const base_page_heading = base_page_children[0].innerText
+                    const base_page_component = base_page_children[1]
+                    //const base_page_footer = base_page_children[2]
+                    console.log(base_page_children)
 
-            // Clicking the link will indirectly cause a navigation
-            await page.click('button.ia-ExitLinkWithModal-exitLink.ia-ExitLinkWithModal-exitLink--pageButton')
-            await page.waitForTimeout(3000)
-            await navigationPromise;
+                    // check if header contains 'resume' or 'questions'
+                    if (base_page_heading.contains('resume')) {
+                        // Indeed saves previously uploaded resume, so don't need to do anything
+                    } else if (base_page_heading.contains('Questions')) {
 
-            // instead of exiting...
-            await page.waitForXPath('//*[@id="ia-modal-root"]/div/div/div[1]/div/div/div[2]/button[1]/span[contains(., "Exit")]')
-            await page.click('button.ia-ExitLinkWithModal-modal-exit')
-            await navigationPromise;
+                    }
+                    /*
+                    if (title.innerText == 'Questions from the employer') {
+                        console.log('Answering Questions from the employer')
+                        // loop through the questions
+                        // document.querySelector('div.ia-BasePage-component.ia-BasePage-component--withContinue')
+                    }
+                    */
+                })
+            }
+            await page.click('button.ia-continueButton')
+            await navigationPromise
         } else {
             console.log('apply on company website')
             // temporarily, add to a file to manually apply to later
