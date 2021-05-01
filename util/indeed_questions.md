@@ -1,7 +1,8 @@
 # Questions from the Employer
 // Besides the optional questions, these are multiple choice
-// text below a question that aren't followed by the double backslash will be considered as answers
+// text below questions that aren't followed by the double backslash will be considered as answers
 // side thought:  I could have a json file with all these questions so that the order look up is non linear, but I'm guessing some of the questions won't match verbatim and I like how this is more readable
+    // in the future I'll probably have a set of questions in an object and if a question can't be found, it'll look through this file
 
 1. What percentage of the time are you willing to travel for work?
 // options are 0%, 25%, 50%, 75%, 100%
@@ -24,6 +25,7 @@ Able to reliably commute or willing to relocate with employer-provided relocatio
 
 1. Are you willing to undergo a background check, in accordance with local laws and regulations?
 // Yes or No
+Yes
 
 1. What is your Grade Point Average (GPA)?
 // optional employer question
@@ -34,3 +36,4 @@ Able to reliably commute or willing to relocate with employer-provided relocatio
 1. Please list 2-3 dates and time ranges that you could do an interview.
 // optional employer question
 
+## New Questions that we haven't come across before

@@ -1,4 +1,5 @@
 'use strict'
+const { question_pool } = require('../util/helper_functions/answer_question.js')
 
 async function indeed(page) {
     // scraping indeed for jobs
@@ -9,7 +10,8 @@ async function indeed(page) {
             height: 800 ,
             deviceScaleFactor: 1,
         })
-        const whatInputVal = "Software Engineer Entry Level"
+        //const whatInputVal = "Software Engineer Entry Level"
+        const whatInputVal = "Entry Level Software Engineer Heartdub"
         const whereInputVal = "Remote"
         await page.type('#text-input-what', whatInputVal)
         // Indeed saves this field with the last input so this clears it
@@ -86,30 +88,56 @@ async function indeed(page) {
             if (step == '1') {
                 // check which heading
                 // check to see if title has the class of ia-BasePage-heading
-                await page.$eval('div.ia-BasePage', apply_portal_container => {
-                    const base_page_children = apply_portal_container.children
+                await page.evaluate(question_pool => {
+                    //const base_page_children = apply_portal_container.children
+                    const base_page_children = document.querySelector('div.ia-BasePage').children
                     const base_page_heading = base_page_children[0].innerText
                     const base_page_component = base_page_children[1]
                     //const base_page_footer = base_page_children[2]
-                    console.log(base_page_children)
 
+                    //console.log({ base_page_heading })
                     // check if header contains 'resume' or 'questions'
-                    if (base_page_heading.contains('resume')) {
+                    if (base_page_heading.includes('resume')) {
                         // Indeed saves previously uploaded resume, so don't need to do anything
-                    } else if (base_page_heading.contains('Questions')) {
-
-                    }
-                    /*
-                    if (title.innerText == 'Questions from the employer') {
-                        console.log('Answering Questions from the employer')
-                        // loop through the questions
-                        // document.querySelector('div.ia-BasePage-component.ia-BasePage-component--withContinue')
-                    }
-                    */
-                })
+                        //console.log({ base_page_heading })
+                    } else if (base_page_heading.includes('Questions')) {
+                        // retrieve questions from the DOM
+                        const all_questions = base_page_component.querySelectorAll('div.ia-Questions-item')
+                        all_questions.forEach(q => {
+                            const question = q.querySelector('span').innerText
+                            // need to retrieve answer choices here to be passed into question_pool
+                            //! what about error checking!
+                            const answer_choices_container = q.querySelectorAll('fieldset > label')
+                            // inside each answer choice, i'm retrieving the text
+                            Array.from(answer_choices_container).forEach(choice => console.log(choice)) // empty [] is return for text input questions
+                            let answer_choices = Array.from(answer_choices_container).map(choice => choice.lastChild.innerText) // empty [] is return for text input questions
+                            let answer_input = Array.from(answer_choices_container).map(choice => choice.click())
+                            /*
+                            const answer = question_pool(question, answer_choices)
+                            
+                            if (answer == null) { // this question is optional
+                                // pass
+                            } else if (answer == undefined) { // if question isn't found, provide a default answer
+                                // if multiple choice, select first one
+                                answer_input[0].click()
+                                // if an input question (How many years...), type '1'
+                            } else {
+                                console.log({ answer })
+                                // select the answer that matches answer
+                                Array.from(answer_choices_container).forEach(choice => {
+                                    if (choice.lastChild.innerText == answer) {
+                                        //answer_input[0].click()
+                                        choice[1].click()
+                                    }
+                                })
+                            }
+                            */ 
+                        })
+                    } // end of else if (answering employer questions)
+                }, question_pool) // end of page.$eval apply_portal_container
             }
-            await page.click('button.ia-continueButton')
-            await navigationPromise
+            //await page.click('button.ia-continueButton')
+            //await navigationPromise
         } else {
             console.log('apply on company website')
             // temporarily, add to a file to manually apply to later
