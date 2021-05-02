@@ -33,7 +33,7 @@ async function indeed(page) {
     // searching through each job from search query
     let jobs_on_page = await page.$$('.jobsearch-SerpJobCard')
     for(let i = 0; i < jobs_on_page.length; i++) {
-        // re-executing selectors, can I save selector handles in an array to reuse?
+        // re-executing selectors bc ElementHandles auto-dispose when their origin frame gets navigated
         jobs_on_page = await page.$$('.jobsearch-SerpJobCard')
         jobs_on_page[i].$eval('h2.title', async job => {
             await job.click()
@@ -88,9 +88,8 @@ async function indeed(page) {
             if (step == '1') {
                 // check which heading
                 // check to see if title has the class of ia-BasePage-heading
-                await page.evaluate(question_pool => {
-                    //const base_page_children = apply_portal_container.children
-                    const base_page_children = document.querySelector('div.ia-BasePage').children
+                let answer_choices = await page.$eval('div.ia-BasePage', apply_portal_container => {
+                    const base_page_children = apply_portal_container.children
                     const base_page_heading = base_page_children[0].innerText
                     const base_page_component = base_page_children[1]
                     //const base_page_footer = base_page_children[2]
@@ -103,38 +102,42 @@ async function indeed(page) {
                     } else if (base_page_heading.includes('Questions')) {
                         // retrieve questions from the DOM
                         const all_questions = base_page_component.querySelectorAll('div.ia-Questions-item')
-                        all_questions.forEach(q => {
+                        return Array.from(all_questions).map(q => {
                             const question = q.querySelector('span').innerText
                             // need to retrieve answer choices here to be passed into question_pool
                             //! what about error checking!
                             const answer_choices_container = q.querySelectorAll('fieldset > label')
                             // inside each answer choice, i'm retrieving the text
-                            Array.from(answer_choices_container).forEach(choice => console.log(choice)) // empty [] is return for text input questions
-                            let answer_choices = Array.from(answer_choices_container).map(choice => choice.lastChild.innerText) // empty [] is return for text input questions
-                            let answer_input = Array.from(answer_choices_container).map(choice => choice.click())
-                            /*
-                            const answer = question_pool(question, answer_choices)
-                            
-                            if (answer == null) { // this question is optional
-                                // pass
-                            } else if (answer == undefined) { // if question isn't found, provide a default answer
-                                // if multiple choice, select first one
-                                answer_input[0].click()
-                                // if an input question (How many years...), type '1'
-                            } else {
-                                console.log({ answer })
-                                // select the answer that matches answer
-                                Array.from(answer_choices_container).forEach(choice => {
-                                    if (choice.lastChild.innerText == answer) {
-                                        //answer_input[0].click()
-                                        choice[1].click()
-                                    }
-                                })
-                            }
-                            */ 
+
+                            //Array.from(answer_choices_container).forEach(choice => console.log(choice)) // empty [] is return for text input questions
+                            //* also get the optional text if provided
+                            let answer_choices = Array.from(answer_choices_container).map(choice => choice.lastChild.innerText)
+                            //let answer_input = Array.from(answer_choices_container).map(choice => choice.click())
+                            return answer_choices
                         })
                     } // end of else if (answering employer questions)
-                }, question_pool) // end of page.$eval apply_portal_container
+                }) // end of page.$eval apply_portal_container
+                console.log(answer_choices)
+                /*
+                const answer = question_pool(question, answer_choices)
+
+                if (answer == null) { // this question is optional
+                // pass
+                } else if (answer == undefined) { // if question isn't found, provide a default answer
+                // if multiple choice, select first one
+                    answer_input[0].click()
+                // if an input question (How many years...), type '1'
+                } else {
+                    console.log({ answer })
+                    // select the answer that matches answer
+                    Array.from(answer_choices_container).forEach(choice => {
+                        if (choice.lastChild.innerText == answer) {
+                //answer_input[0].click()
+                            choice[1].click()
+                        }
+                    })
+                }
+                */ 
             }
             //await page.click('button.ia-continueButton')
             //await navigationPromise
