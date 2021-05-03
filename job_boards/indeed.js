@@ -1,5 +1,5 @@
 'use strict'
-const { question_pool } = require('../util/helper_functions/answer_question.js')
+const { answer_indeed_questions } = require('../util/helper_functions/read_indeed_questions.js')
 
 async function indeed(page) {
     // scraping indeed for jobs
@@ -83,132 +83,19 @@ async function indeed(page) {
 
             await page.waitForXPath('//*[@id="ia-container"]/div/div[1]/div/main/div[2]/div[2]/div/div/div[2]/div/button/span[contains(., "Continue")]')
             // check which step the application is on
-            let step = await page.$eval('div.ia-Navigation-steps', step => step.innerText.match(/step\s+(.)\s+of/)[1])
-            console.log({ step })
-            if (step == '1') {
-                // check which heading
-                // check to see if title has the class of ia-BasePage-heading
-                let answer_choices = await page.$$('div.ia-BasePage div.ia-Questions-item')
-                /*
-                let answer_choices = await page.evaluateHandle(() => {
-                    //const base_page_children = apply_portal_container.children
-                    const base_page_children = document.querySelector('div.ia-BasePage').children
-                    const base_page_heading = base_page_children[0].innerText
-                    const base_page_component = base_page_children[1]
-                    //const base_page_footer = base_page_children[2]
+            //let step = await page.$eval('div.ia-Navigation-steps', step => step.innerText.match(/step\s+(.)\s+of/)[1])
 
-                    //console.log({ base_page_heading })
-                    // check if header contains 'resume' or 'questions'
-                    if (base_page_heading.includes('resume')) {
-                        // Indeed saves previously uploaded resume, so don't need to do anything
-                        //console.log({ base_page_heading })
-                    } else if (base_page_heading.includes('Questions')) {
-                        // retrieve questions from the DOM
-                        const all_questions = base_page_component.querySelectorAll('div.ia-Questions-item')
-                        console.log({ all_questions })
-                        return all_questions
-                        
-                        return Array.from(all_questions).map(q => {
-                            const question = q.querySelector('span').innerText
-                            // need to retrieve answer choices here to be passed into question_pool
-                            //! what about error checking!
-                            const answer_choices_container = q.querySelectorAll('fieldset > label')
-                            // inside each answer choice, i'm retrieving the text
-
-                            //Array.from(answer_choices_container).forEach(choice => console.log(choice)) // empty [] is return for text input questions
-                            //* also get the optional text if provided
-                            let answer_choices = Array.from(answer_choices_container).map(choice => choice.lastChild.innerText)
-                            //let answer_input = Array.from(answer_choices_container).map(choice => choice.click())
-                            return answer_choices
-                        })
-                        
-                    } // end of else if (answering employer questions)
-                }) // end of page.$eval apply_portal_container
-                */
-                console.log(answer_choices)
-                for (let i = 0; i < answer_choices.length; i++) {
-                    const element_handle = await answer_choices[i]
-                    //const answer_choice = element_handle.$('span').getProperty('innerText').jsonValue()
-
-                    const question = await element_handle.$eval('span', question => {
-                        console.log('question: ', question.innerText)
-                        return question.innerText
-                    })
-                    console.log('q: ', question)
-                    //const answer_choice = await (await answer_choices[i].getProperty('innerText')).jsonValue()
-
-                    /*
-                    let answer_choices_container = await element_handle.$$('fieldset > label')
-                    let answers = await Array.from(await answer_choices_container).map(async choice => {
-                        //console.log(await choice.getProperty('innerText').value())
-                        //return await choice.getProperty('innerText').jsonValue()
-                        console.log(await (await choice.getProperty('innerText')).jsonValue())
-                        return await (await choice.getProperty('innerText')).jsonValue()
-                    })
-                    */
-                    //const answers = await element_handle.$eval('fieldset > label', el => {
-                        //console.log(el.innerText)
-                        //return el.innerText
-                    //})
-                    let answers = await page.evaluate(async element_handle => {
-                        let el = element_handle.querySelectorAll('fieldset > label')
-                        console.log('el: ', el)
-                        let foo =  await Array.from(el).map(x => {
-                            //console.log('x: ', x.innerText)
-                            //return await (await x.getAttribute('innerText')).jsonValue()
-                            return x.innerText
-                        })
-                        console.log({ foo })
-                        return await foo
-                    }, element_handle)
-                    //console.log('a: ', answer_choice)
-                    console.log('answer_choices:', await answers)
-                    //question_pool(question, answer_choices)
-                }
-
-                /*
-                Array.from(answer_choices).map(q => {
-                    console.log('inside')
-                    const question = q.$eval('span', question => question.innerText)
-                    //const question = q.querySelector('span').innerText
-                    console.log(question)
-
-                    // need to retrieve answer choices here to be passed into question_pool
-                    //! what about error checking!
-                    const answer_choices_container = q.querySelectorAll('fieldset > label')
-                    // inside each answer choice, i'm retrieving the text
-
-                    //Array.from(answer_choices_container).forEach(choice => console.log(choice)) // empty [] is return for text input questions
-                    //* also get the optional text if provided
-                    let answer_choices = Array.from(answer_choices_container).map(choice => choice.lastChild.innerText)
-                    //let answer_input = Array.from(answer_choices_container).map(choice => choice.click())
-                    console.log(answer_choices)
-                })
-                */
-
-                /*
-                const answer = question_pool(question, answer_choices)
-
-                if (answer == null) { // this question is optional
-                // pass
-                } else if (answer == undefined) { // if question isn't found, provide a default answer
-                // if multiple choice, select first one
-                    answer_input[0].click()
-                // if an input question (How many years...), type '1'
-                } else {
-                    console.log({ answer })
-                    // select the answer that matches answer
-                    Array.from(answer_choices_container).forEach(choice => {
-                        if (choice.lastChild.innerText == answer) {
-                //answer_input[0].click()
-                            choice[1].click()
-                        }
-                    })
-                }
-                */ 
+            const step_heading = await page.$eval('.ia-BasePage-heading', el => el.innerText)
+            console.log(step_heading)
+            if (step_heading.includes('resume')) {
+                // Indeed saves previously uploaded resume, so don't need to do anything
+            } else if (step_heading.includes('Questions')) {
+                // retrieve questions from the DOM
+                await answer_indeed_questions(page)
             }
-            //await page.click('button.ia-continueButton')
-            //await navigationPromise
+
+            await page.click('button.ia-continueButton')
+            await navigationPromise
         } else {
             console.log('apply on company website')
             // temporarily, add to a file to manually apply to later
@@ -217,6 +104,6 @@ async function indeed(page) {
         }
         await page.waitForTimeout(3000)
     } // end of jobs_on_page loop
-}
+} // fxn indeed
 
 module.exports = { indeed }
