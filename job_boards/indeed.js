@@ -88,8 +88,11 @@ async function indeed(page) {
             if (step == '1') {
                 // check which heading
                 // check to see if title has the class of ia-BasePage-heading
-                let answer_choices = await page.$eval('div.ia-BasePage', apply_portal_container => {
-                    const base_page_children = apply_portal_container.children
+                let answer_choices = await page.$$('div.ia-BasePage div.ia-Questions-item')
+                /*
+                let answer_choices = await page.evaluateHandle(() => {
+                    //const base_page_children = apply_portal_container.children
+                    const base_page_children = document.querySelector('div.ia-BasePage').children
                     const base_page_heading = base_page_children[0].innerText
                     const base_page_component = base_page_children[1]
                     //const base_page_footer = base_page_children[2]
@@ -102,6 +105,9 @@ async function indeed(page) {
                     } else if (base_page_heading.includes('Questions')) {
                         // retrieve questions from the DOM
                         const all_questions = base_page_component.querySelectorAll('div.ia-Questions-item')
+                        console.log({ all_questions })
+                        return all_questions
+                        
                         return Array.from(all_questions).map(q => {
                             const question = q.querySelector('span').innerText
                             // need to retrieve answer choices here to be passed into question_pool
@@ -115,9 +121,71 @@ async function indeed(page) {
                             //let answer_input = Array.from(answer_choices_container).map(choice => choice.click())
                             return answer_choices
                         })
+                        
                     } // end of else if (answering employer questions)
                 }) // end of page.$eval apply_portal_container
+                */
                 console.log(answer_choices)
+                for (let i = 0; i < answer_choices.length; i++) {
+                    const element_handle = await answer_choices[i]
+                    //const answer_choice = element_handle.$('span').getProperty('innerText').jsonValue()
+
+                    const question = await element_handle.$eval('span', question => {
+                        console.log('question: ', question.innerText)
+                        return question.innerText
+                    })
+                    console.log('q: ', question)
+                    //const answer_choice = await (await answer_choices[i].getProperty('innerText')).jsonValue()
+
+                    /*
+                    let answer_choices_container = await element_handle.$$('fieldset > label')
+                    let answers = await Array.from(await answer_choices_container).map(async choice => {
+                        //console.log(await choice.getProperty('innerText').value())
+                        //return await choice.getProperty('innerText').jsonValue()
+                        console.log(await (await choice.getProperty('innerText')).jsonValue())
+                        return await (await choice.getProperty('innerText')).jsonValue()
+                    })
+                    */
+                    //const answers = await element_handle.$eval('fieldset > label', el => {
+                        //console.log(el.innerText)
+                        //return el.innerText
+                    //})
+                    let answers = await page.evaluate(async element_handle => {
+                        let el = element_handle.querySelectorAll('fieldset > label')
+                        console.log('el: ', el)
+                        let foo =  await Array.from(el).map(x => {
+                            //console.log('x: ', x.innerText)
+                            //return await (await x.getAttribute('innerText')).jsonValue()
+                            return x.innerText
+                        })
+                        console.log({ foo })
+                        return await foo
+                    }, element_handle)
+                    //console.log('a: ', answer_choice)
+                    console.log('answer_choices:', await answers)
+                    //question_pool(question, answer_choices)
+                }
+
+                /*
+                Array.from(answer_choices).map(q => {
+                    console.log('inside')
+                    const question = q.$eval('span', question => question.innerText)
+                    //const question = q.querySelector('span').innerText
+                    console.log(question)
+
+                    // need to retrieve answer choices here to be passed into question_pool
+                    //! what about error checking!
+                    const answer_choices_container = q.querySelectorAll('fieldset > label')
+                    // inside each answer choice, i'm retrieving the text
+
+                    //Array.from(answer_choices_container).forEach(choice => console.log(choice)) // empty [] is return for text input questions
+                    //* also get the optional text if provided
+                    let answer_choices = Array.from(answer_choices_container).map(choice => choice.lastChild.innerText)
+                    //let answer_input = Array.from(answer_choices_container).map(choice => choice.click())
+                    console.log(answer_choices)
+                })
+                */
+
                 /*
                 const answer = question_pool(question, answer_choices)
 
