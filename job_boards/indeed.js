@@ -25,7 +25,7 @@ async function indeed(page) {
         if (button) {
             await button.click()
             await page.waitForXPath('//*[@id="resultsBody"]')
-            await page.waitForTimeout(3000)
+            await page.waitForTimeout(1500)
         }
     } catch (error) {
         console.error(error)
@@ -42,7 +42,7 @@ async function indeed(page) {
         await page.waitForNavigation({waitUntil: 'domcontentloaded'})
         await page.waitForSelector('iframe#vjs-container-iframe')
         const iframeElement = await page.$('iframe#vjs-container-iframe')
-        await page.waitForTimeout(3000)
+        await page.waitForTimeout(1500)
 
         // iframe will pop up to the right with the JD and application...
         const job_header = await page.evaluate(async iframeElement => {
@@ -70,29 +70,56 @@ async function indeed(page) {
         // page frame is navigated to a different url
         // save this data in an excel sheet
 
-        await page.waitForTimeout(3000)
+        await page.waitForTimeout(1500)
         if (job_header.apply_thro_indeed) { // if I'm able to apply through Indeed
             console.log('able to apply through Indeed')
-            // Set up the wait for navigation before clicking the link.
-            const navigationPromise = page.waitForNavigation()
-            //await page.on('framedetached', () => { console.log('frame detached') })
+            const navigationPromise = page.waitForNavigation() // Set up the wait for navigation before clicking the link.
             await iframeElement.evaluate(async frame => await frame.contentDocument.querySelector('#indeedApplyButton').click())
-            await page.waitForTimeout(3000)
-            // The navigationPromise resolves after navigation has finished
-            await navigationPromise
+            await page.waitForTimeout(1500)
+            await navigationPromise // The navigationPromise resolves after navigation has finished
 
             await page.waitForXPath('//*[@id="ia-container"]/div/div[1]/div/main/div[2]/div[2]/div/div/div[2]/div/button/span[contains(., "Continue")]')
             // check which step the application is on
-            //let step = await page.$eval('div.ia-Navigation-steps', step => step.innerText.match(/step\s+(.)\s+of/)[1])
-
-            const step_heading = await page.$eval('.ia-BasePage-heading', el => el.innerText)
-            console.log(step_heading)
-            if (step_heading.includes('resume')) {
-                // Indeed saves previously uploaded resume, so don't need to do anything
-            } else if (step_heading.includes('Questions')) {
-                // retrieve questions from the DOM
-                await answer_indeed_questions(page)
+            let step = await page.$eval('div.ia-Navigation-steps', step => step.innerText.match(/step\s+(.)\s+of/)[1])
+            console.log({ step })
+            if (step == '1') {
+                await navigationPromise
+                let step_heading = await page.$eval('.ia-BasePage-heading', el => {
+                    console.log(el.innerText)
+                    return el.innerText
+                })
+                if (step_heading.includes('resume')) {
+                    console.log(await step_heading)
+                    // Indeed saves previously uploaded resume, so don't need to do anything
+                } else if (step_heading.includes('Questions')) {
+                    console.log(await step_heading)
+                    // retrieve questions from the DOM
+                    await answer_indeed_questions(page)
+                }
+                await page.click('button.ia-continueButton')
+                await page.waitForTimeout(1500)
             }
+            await navigationPromise
+            step = await page.$eval('div.ia-Navigation-steps', step => step.innerText.match(/step\s+(.)\s+of/)[1])
+            console.log({ step })
+            if (step == '2') {
+                await navigationPromise
+                let step_heading = await page.$eval('.ia-BasePage-heading', el => {
+                    console.log(el.innerText)
+                    return el.innerText
+                })
+                if (step_heading.includes('resume')) {
+                    console.log(await step_heading)
+                    // Indeed saves previously uploaded resume, so don't need to do anything
+                } else if (step_heading.includes('Questions')) {
+                    console.log(await step_heading)
+                    // retrieve questions from the DOM
+                    await answer_indeed_questions(page)
+                }
+                await page.click('button.ia-continueButton')
+                await navigationPromise
+            }
+            //! going to have to check which step again
 
             await page.click('button.ia-continueButton')
             await navigationPromise
@@ -102,7 +129,7 @@ async function indeed(page) {
             // check if the job has been applied through the website by cross-referencing the excel sheet
             // apply through the website eventually
         }
-        await page.waitForTimeout(3000)
+        await page.waitForTimeout(1500)
     } // end of jobs_on_page loop
 } // fxn indeed
 
