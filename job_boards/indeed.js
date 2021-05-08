@@ -1,5 +1,5 @@
 'use strict'
-const { answer_indeed_questions } = require('../util/helper_functions/read_indeed_questions.js')
+const { steps } = require('../util/helper_functions/application_steps.js')
 
 async function indeed(page) {
     // scraping indeed for jobs
@@ -78,51 +78,8 @@ async function indeed(page) {
             await page.waitForTimeout(1500)
             await navigationPromise // The navigationPromise resolves after navigation has finished
 
-            await page.waitForXPath('//*[@id="ia-container"]/div/div[1]/div/main/div[2]/div[2]/div/div/div[2]/div/button/span[contains(., "Continue")]')
-            // check which step the application is on
-            let step = await page.$eval('div.ia-Navigation-steps', step => step.innerText.match(/step\s+(.)\s+of/)[1])
-            console.log({ step })
-            if (step == '1') {
-                await navigationPromise
-                let step_heading = await page.$eval('.ia-BasePage-heading', el => {
-                    console.log(el.innerText)
-                    return el.innerText
-                })
-                if (step_heading.includes('resume')) {
-                    console.log(await step_heading)
-                    // Indeed saves previously uploaded resume, so don't need to do anything
-                } else if (step_heading.includes('Questions')) {
-                    console.log(await step_heading)
-                    // retrieve questions from the DOM
-                    await answer_indeed_questions(page)
-                }
-                await page.click('button.ia-continueButton')
-                await page.waitForTimeout(1500)
-            }
-            await navigationPromise
-            step = await page.$eval('div.ia-Navigation-steps', step => step.innerText.match(/step\s+(.)\s+of/)[1])
-            console.log({ step })
-            if (step == '2') {
-                await navigationPromise
-                let step_heading = await page.$eval('.ia-BasePage-heading', el => {
-                    console.log(el.innerText)
-                    return el.innerText
-                })
-                if (step_heading.includes('resume')) {
-                    console.log(await step_heading)
-                    // Indeed saves previously uploaded resume, so don't need to do anything
-                } else if (step_heading.includes('Questions')) {
-                    console.log(await step_heading)
-                    // retrieve questions from the DOM
-                    await answer_indeed_questions(page)
-                }
-                await page.click('button.ia-continueButton')
-                await navigationPromise
-            }
-            //! going to have to check which step again
-
-            await page.click('button.ia-continueButton')
-            await navigationPromise
+            /* move code below into a function? */
+            await steps(page)
         } else {
             console.log('apply on company website')
             // temporarily, add to a file to manually apply to later
