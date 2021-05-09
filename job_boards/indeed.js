@@ -10,8 +10,7 @@ async function indeed(page) {
             height: 800 ,
             deviceScaleFactor: 1,
         })
-        //const whatInputVal = "Software Engineer Entry Level"
-        const whatInputVal = "Entry Level Software Engineer Heartdub"
+        const whatInputVal = "Software Engineer Entry Level"
         const whereInputVal = "Remote"
         await page.type('#text-input-what', whatInputVal)
         // Indeed saves this field with the last input so this clears it
@@ -78,7 +77,6 @@ async function indeed(page) {
             await page.waitForTimeout(1500)
             await navigationPromise // The navigationPromise resolves after navigation has finished
 
-            /* move code below into a function? */
             await steps(page)
         } else {
             console.log('apply on company website')
