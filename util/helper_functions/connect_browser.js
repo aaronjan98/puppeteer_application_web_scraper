@@ -6,7 +6,7 @@ const timer = ms => new Promise( res => setTimeout(res, ms))
 async function open_websocket_debugger() {
     // need to launch Chrome with the "--remote-debugging-port=9222 argument to connect to an existing browser session
     try {
-        await exec("osascript /Users/jan/Documents/dev/shellscript/run.scpt")
+        await exec("osascript /Users/jan/Documents/dev/web_scraping/application_automation_puppeteer/util/run.scpt")
     } catch (err) {
         await err.status
     }
